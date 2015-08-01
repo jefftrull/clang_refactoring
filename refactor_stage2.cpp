@@ -49,9 +49,13 @@ public:
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
         using namespace clang;
         if (VarDecl const * capture = result.Nodes.getNodeAs<VarDecl>("capture")) {
-            std::cout << "found captured variable " << capture->getQualifiedNameAsString() << " of type " << capture->getType().getAsString() << "\n";
+            VarDecl const * lambda_var = result.Nodes.getNodeAs<VarDecl>("lambdavar");
+            captured_vars[lambda_var->getQualifiedNameAsString()].emplace_back(capture->getQualifiedNameAsString(),
+                                                                               capture->getType().getAsString());
         }
     }
+    std::map<std::string,
+             std::vector<std::pair<std::string, std::string> > > captured_vars;
 private:
     clang::tooling::Replacements * replace_;
 };
@@ -122,8 +126,15 @@ int main(int argc, char const **argv) {
         return result;
     }
 
+    // report accumulated data
     for (auto lb : lambda_handler.lambda_bodies) {
         std::cout << "lambda " << lb.first << " has body:\n" << lb.second << "\n";
+        if (capture_handler.captured_vars.find(lb.first) != capture_handler.captured_vars.end()) {
+            std::cout << "    and captures:\n";
+            for (auto capture : capture_handler.captured_vars[lb.first]) {
+                std::cout << "\t" << capture.first << " of type " << capture.second << "\n";
+            }
+        }
     }
 
     std::cout << "Collected replacements:\n";
