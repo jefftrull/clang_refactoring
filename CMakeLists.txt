@@ -53,3 +53,6 @@ target_link_libraries( rs2
 )
 set_target_properties( rs2 PROPERTIES
                        LINK_FLAGS "${LLVM_LDFLAGS}" )
+
+# test code
+add_executable( t test.cpp )

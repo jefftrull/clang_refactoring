@@ -1,6 +1,9 @@
 // Performing the second refactoring stage of my example: finding our special lambda
 // expressions and analyzing how they use variables from outer scopes
 
+// sample command line:
+// ./rs2 -p=. -extra-arg='-I/usr/lib/gcc/x86_64-linux-gnu/4.9/include' -extra-arg='-std=c++11' ../test.cpp --
+
 #include <iostream>
 
 #include "clang/AST/AST.h"
@@ -18,7 +21,17 @@ public:
     CaptureHandler(clang::tooling::Replacements * replace) : replace_(replace) {}
 
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
-        std::cout << "found a match!\n";
+        using namespace clang;
+        if (LambdaExpr const * lambda = result.Nodes.getNodeAs<LambdaExpr>("lambda")) {
+            for (auto c : lambda->captures()) {
+                if (c.capturesVariable()) {
+                    auto var = c.getCapturedVar();
+                    std::cout << "found captured variable " << var->getQualifiedNameAsString() << " of type " << var->getType().getAsString() << "\n";
+                    // next step: find uses of this variable and determine if any are mutating
+                    
+                }
+            }
+        }
     }
 private:
     clang::tooling::Replacements * replace_;
@@ -40,9 +53,7 @@ int main(int argc, char const **argv) {
                               matchesName("expression_capture_[0-9]+"),
                               hasInitializer(
                                   constructExpr(
-                                      hasDescendant(lambdaExpr(
-                                                        hasType(recordDecl(
-                                                                    forEach(fieldDecl().bind("capture"))))))))),
+                                      hasDescendant(lambdaExpr().bind("lambda"))))),
                       &capture_handler);
 
     if (int result = tool.run(newFrontendActionFactory(&finder).get())) {
