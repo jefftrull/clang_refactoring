@@ -18,9 +18,9 @@
 
 static llvm::cl::OptionCategory ToolingSampleCategory("Lambda extractor");
 
-class CaptureHandler : public clang::ast_matchers::MatchFinder::MatchCallback {
+class LambdaHandler : public clang::ast_matchers::MatchFinder::MatchCallback {
 public:
-    CaptureHandler(clang::tooling::Replacements * replace) : replace_(replace) {}
+    LambdaHandler(clang::tooling::Replacements * replace) : replace_(replace) {}
 
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
         using namespace clang;
@@ -35,21 +35,27 @@ public:
                 Lexer::getSourceText(bodyRange,
                                      *result.SourceManager,
                                      result.Context->getLangOpts()).str();
-                                              
-            for (auto c : lambda->captures()) {
-                if (c.capturesVariable()) {
-                    auto var = c.getCapturedVar();
-                    std::cout << "found captured variable " << var->getQualifiedNameAsString() << " of type " << var->getType().getAsString() << "\n";
-                    // next step: find uses of this variable and determine if any are mutating
-                    
-                }
-            }
         }
     }
     std::map<std::string, std::string> lambda_bodies;
 private:
     clang::tooling::Replacements * replace_;
 };
+
+class CaptureHandler : public clang::ast_matchers::MatchFinder::MatchCallback {
+public:
+    CaptureHandler(clang::tooling::Replacements * replace) : replace_(replace) {}
+
+    virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
+        using namespace clang;
+        if (VarDecl const * capture = result.Nodes.getNodeAs<VarDecl>("capture")) {
+            std::cout << "found captured variable " << capture->getQualifiedNameAsString() << " of type " << capture->getType().getAsString() << "\n";
+        }
+    }
+private:
+    clang::tooling::Replacements * replace_;
+};
+
 
 template<typename M>
 clang::ast_matchers::DeclarationMatcher make_lambda_matcher(M const& child_matcher) {
@@ -64,6 +70,28 @@ clang::ast_matchers::DeclarationMatcher make_lambda_matcher(M const& child_match
                    decl().bind("lambdavar"));
 }
 
+namespace custom_matchers {
+// Clang does not currently provide a Traversal matcher to go from lambda expressions to
+// associated capture variables, so let's make one.  Following the forEachSwitchCase pattern:
+AST_MATCHER_P(clang::LambdaExpr, forEachCaptureVar,
+              clang::ast_matchers::internal::Matcher<clang::VarDecl>, InnerMatcher) {
+    using namespace clang::ast_matchers::internal;
+    BoundNodesTreeBuilder Result;
+    bool Matched = false;
+    for (clang::LambdaCapture const & lc : Node.captures()) {
+        BoundNodesTreeBuilder LambdaBuilder(*Builder);
+        bool CaptureMatched = InnerMatcher.matches(*lc.getCapturedVar(), Finder, &LambdaBuilder);
+        if (CaptureMatched) {
+            Matched = true;
+            Result.addMatch(LambdaBuilder);
+        }
+    }
+    *Builder = std::move(Result);
+    return Matched;
+}
+
+}
+
 int main(int argc, char const **argv) {
     using namespace clang;
     using namespace clang::tooling;
@@ -73,17 +101,25 @@ int main(int argc, char const **argv) {
     RefactoringTool     tool(opt.getCompilations(), opt.getSourcePathList());
 
     // set up callbacks
+    LambdaHandler       lambda_handler(&tool.getReplacements());
     CaptureHandler      capture_handler(&tool.getReplacements());
 
     MatchFinder  finder;
+
+    // lambda bodies
     auto lambda_matcher = make_lambda_matcher(anything());
-    finder.addMatcher(lambda_matcher, &capture_handler);
+    finder.addMatcher(lambda_matcher, &lambda_handler);
+
+    // usage of captured variables
+    using custom_matchers::forEachCaptureVar;
+    auto capture_matcher = make_lambda_matcher(forEachCaptureVar(decl().bind("capture")));
+    finder.addMatcher(capture_matcher, &capture_handler);
 
     if (int result = tool.run(newFrontendActionFactory(&finder).get())) {
         return result;
     }
 
-    for (auto lb : capture_handler.lambda_bodies) {
+    for (auto lb : lambda_handler.lambda_bodies) {
         std::cout << "lambda " << lb.first << " has body:\n" << lb.second << "\n";
     }
 
