@@ -10,9 +10,11 @@
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Basic/SourceLocation.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Refactoring.h"
 #include "clang/Tooling/Tooling.h"
+#include "clang/Lex/Lexer.h"
 
 static llvm::cl::OptionCategory ToolingSampleCategory("Lambda extractor");
 
@@ -23,6 +25,14 @@ public:
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
         using namespace clang;
         if (LambdaExpr const * lambda = result.Nodes.getNodeAs<LambdaExpr>("lambda")) {
+            // display lambda contents
+            auto body      = lambda->getBody();
+            auto bodyStart = body->getLocStart().getLocWithOffset(1);   // skip left brace
+            auto bodyEnd   = body->getLocEnd().getLocWithOffset(-1);    // drop right brace
+            std::cout << Lexer::getSourceText(CharSourceRange::getTokenRange(bodyStart, bodyEnd),
+                                              *result.SourceManager,
+                                              result.Context->getLangOpts()).str() << "\n";
+                                              
             for (auto c : lambda->captures()) {
                 if (c.capturesVariable()) {
                     auto var = c.getCapturedVar();
