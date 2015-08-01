@@ -79,6 +79,9 @@ AST_MATCHER_P(clang::LambdaExpr, forEachCaptureVar,
     BoundNodesTreeBuilder Result;
     bool Matched = false;
     for (clang::LambdaCapture const & lc : Node.captures()) {
+        if (!lc.capturesVariable()) {
+            continue;
+        }
         BoundNodesTreeBuilder LambdaBuilder(*Builder);
         bool CaptureMatched = InnerMatcher.matches(*lc.getCapturedVar(), Finder, &LambdaBuilder);
         if (CaptureMatched) {
