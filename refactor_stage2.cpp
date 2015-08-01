@@ -25,13 +25,16 @@ public:
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
         using namespace clang;
         if (LambdaExpr const * lambda = result.Nodes.getNodeAs<LambdaExpr>("lambda")) {
+            VarDecl    const * lambda_var = result.Nodes.getNodeAs<VarDecl>("lambdavar");
             // display lambda contents
             auto body      = lambda->getBody();
             auto bodyStart = body->getLocStart().getLocWithOffset(1);   // skip left brace
             auto bodyEnd   = body->getLocEnd().getLocWithOffset(-1);    // drop right brace
-            std::cout << Lexer::getSourceText(CharSourceRange::getTokenRange(bodyStart, bodyEnd),
-                                              *result.SourceManager,
-                                              result.Context->getLangOpts()).str() << "\n";
+            auto bodyRange = CharSourceRange::getTokenRange(bodyStart, bodyEnd);
+            lambda_bodies[lambda_var->getQualifiedNameAsString()] =
+                Lexer::getSourceText(bodyRange,
+                                     *result.SourceManager,
+                                     result.Context->getLangOpts()).str();
                                               
             for (auto c : lambda->captures()) {
                 if (c.capturesVariable()) {
@@ -43,6 +46,7 @@ public:
             }
         }
     }
+    std::map<std::string, std::string> lambda_bodies;
 private:
     clang::tooling::Replacements * replace_;
 };
@@ -53,10 +57,11 @@ clang::ast_matchers::DeclarationMatcher make_lambda_matcher(M const& child_match
     using namespace clang;
     using namespace clang::ast_matchers;
     return varDecl(hasType(autoType()),
-                              matchesName("expression_capture_[0-9]+"),
-                              hasInitializer(
-                                  constructExpr(
-                                      hasDescendant(lambdaExpr(child_matcher).bind("lambda")))));
+                   matchesName("expression_capture_[0-9]+"),
+                   hasInitializer(
+                       constructExpr(
+                           hasDescendant(lambdaExpr(child_matcher).bind("lambda")))),
+                   decl().bind("lambdavar"));
 }
 
 int main(int argc, char const **argv) {
@@ -76,6 +81,10 @@ int main(int argc, char const **argv) {
 
     if (int result = tool.run(newFrontendActionFactory(&finder).get())) {
         return result;
+    }
+
+    for (auto lb : capture_handler.lambda_bodies) {
+        std::cout << "lambda " << lb.first << " has body:\n" << lb.second << "\n";
     }
 
     std::cout << "Collected replacements:\n";
