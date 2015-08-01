@@ -47,6 +47,18 @@ private:
     clang::tooling::Replacements * replace_;
 };
 
+template<typename M>
+clang::ast_matchers::DeclarationMatcher make_lambda_matcher(M const& child_matcher) {
+//clang::Matcher<clang::VarDecl> make_lambda_matcher(M const& child_matcher) {
+    using namespace clang;
+    using namespace clang::ast_matchers;
+    return varDecl(hasType(autoType()),
+                              matchesName("expression_capture_[0-9]+"),
+                              hasInitializer(
+                                  constructExpr(
+                                      hasDescendant(lambdaExpr(child_matcher).bind("lambda")))));
+}
+
 int main(int argc, char const **argv) {
     using namespace clang;
     using namespace clang::tooling;
@@ -59,12 +71,8 @@ int main(int argc, char const **argv) {
     CaptureHandler      capture_handler(&tool.getReplacements());
 
     MatchFinder  finder;
-    finder.addMatcher(varDecl(hasType(autoType()),
-                              matchesName("expression_capture_[0-9]+"),
-                              hasInitializer(
-                                  constructExpr(
-                                      hasDescendant(lambdaExpr().bind("lambda"))))),
-                      &capture_handler);
+    auto lambda_matcher = make_lambda_matcher(anything());
+    finder.addMatcher(lambda_matcher, &capture_handler);
 
     if (int result = tool.run(newFrontendActionFactory(&finder).get())) {
         return result;
