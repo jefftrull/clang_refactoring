@@ -148,8 +148,23 @@ int main(int argc, char const **argv) {
 
     // usage of captured variables
     using custom_matchers::forEachCaptureVar;
-    auto capture_matcher = make_lambda_matcher(forEachCaptureVar(decl().bind("capture")));
-    finder.addMatcher(capture_matcher, &capture_handler);
+    using custom_matchers::hasArgParameter;
+    // lambda captures used as non-const reference parameters in called functions
+    auto refparm_capture_matcher =
+        make_lambda_matcher(lambdaExpr(
+                                // remember captures
+                                forEachCaptureVar(decl().bind("capture")),
+                                forEachDescendant(
+                                    // look for calls within the lambda body
+                                    callExpr(
+                                        hasArgParameter(
+                                            // with some argument that is a captured variable
+                                            declRefExpr(to(equalsBoundNode("capture"))),
+                                            // bound to a non-const ref parameter
+                                            parmVarDecl(hasType(lValueReferenceType(
+                                                                    unless(pointee(isConstQualified()))))))))));
+
+    finder.addMatcher(refparm_capture_matcher, &refparm_capture_handler);
 
     if (int result = tool.run(newFrontendActionFactory(&finder).get())) {
         return result;
