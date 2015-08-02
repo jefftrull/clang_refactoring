@@ -44,26 +44,27 @@ private:
 
 class CaptureHandler : public clang::ast_matchers::MatchFinder::MatchCallback {
 public:
-    CaptureHandler(clang::tooling::Replacements * replace) : replace_(replace) {}
+    typedef std::map<std::string,
+                     std::vector<std::pair<std::string, std::string> > > capture_map_t;
+    CaptureHandler(clang::tooling::Replacements * replace,
+                   capture_map_t & captured_vars) : replace_(replace), captured_vars_(captured_vars) {}
 
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
         using namespace clang;
         if (VarDecl const * capture = result.Nodes.getNodeAs<VarDecl>("capture")) {
             VarDecl const * lambda_var = result.Nodes.getNodeAs<VarDecl>("lambdavar");
-            captured_vars[lambda_var->getQualifiedNameAsString()].emplace_back(capture->getQualifiedNameAsString(),
+            captured_vars_[lambda_var->getQualifiedNameAsString()].emplace_back(capture->getQualifiedNameAsString(),
                                                                                capture->getType().getAsString());
         }
     }
-    std::map<std::string,
-             std::vector<std::pair<std::string, std::string> > > captured_vars;
 private:
     clang::tooling::Replacements * replace_;
+    capture_map_t & captured_vars_;
 };
 
-
+// a matcher for our special lambdas with binders to help us extract body code
 template<typename M>
 clang::ast_matchers::DeclarationMatcher make_lambda_matcher(M const& child_matcher) {
-//clang::Matcher<clang::VarDecl> make_lambda_matcher(M const& child_matcher) {
     using namespace clang;
     using namespace clang::ast_matchers;
     return varDecl(hasType(autoType()),
@@ -138,7 +139,8 @@ int main(int argc, char const **argv) {
 
     // set up callbacks
     LambdaHandler       lambda_handler(&tool.getReplacements());
-    CaptureHandler      capture_handler(&tool.getReplacements());
+    CaptureHandler::capture_map_t captured_ref_params;
+    CaptureHandler      refparm_capture_handler(&tool.getReplacements(), captured_ref_params);
 
     MatchFinder  finder;
 
@@ -173,9 +175,9 @@ int main(int argc, char const **argv) {
     // report accumulated data
     for (auto lb : lambda_handler.lambda_bodies) {
         std::cout << "lambda " << lb.first << " has body:\n" << lb.second << "\n";
-        if (capture_handler.captured_vars.find(lb.first) != capture_handler.captured_vars.end()) {
-            std::cout << "    and captures:\n";
-            for (auto capture : capture_handler.captured_vars[lb.first]) {
+        if (captured_ref_params.find(lb.first) != captured_ref_params.end()) {
+            std::cout << "    and lvalue ref captures:\n";
+            for (auto capture : captured_ref_params[lb.first]) {
                 std::cout << "\t" << capture.first << " of type " << capture.second << "\n";
             }
         }
