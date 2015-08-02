@@ -137,12 +137,10 @@ int main(int argc, char const **argv) {
     CommonOptionsParser opt(argc, argv, ToolingSampleCategory);
     RefactoringTool     tool(opt.getCompilations(), opt.getSourcePathList());
 
+    MatchFinder  finder;
+
     // set up callbacks
     LambdaHandler       lambda_handler(&tool.getReplacements());
-    CaptureHandler::capture_map_t captured_ref_params;
-    CaptureHandler      refparm_capture_handler(&tool.getReplacements(), captured_ref_params);
-
-    MatchFinder  finder;
 
     // lambda bodies
     auto lambda_matcher = make_lambda_matcher(anything());
@@ -166,7 +164,32 @@ int main(int argc, char const **argv) {
                                             parmVarDecl(hasType(lValueReferenceType(
                                                                     unless(pointee(isConstQualified()))))))))));
 
+    CaptureHandler::capture_map_t captured_ref_params;
+    CaptureHandler      refparm_capture_handler(&tool.getReplacements(), captured_ref_params);
     finder.addMatcher(refparm_capture_matcher, &refparm_capture_handler);
+
+    // lambda captures used as LHS of assignments or mutating operators
+    auto assignment_capture_matcher =
+        make_lambda_matcher(lambdaExpr(
+                                // remember captures
+                                forEachCaptureVar(decl().bind("capture")),
+                                forEachDescendant(
+                                    stmt(anyOf(
+                                             binaryOperator(
+                                                 hasLHS(declRefExpr(to(equalsBoundNode("capture")))),
+                                                 anyOf(hasOperatorName("="),
+                                                       hasOperatorName("+="),
+                                                       hasOperatorName("-="),
+                                                       hasOperatorName("&="),
+                                                       hasOperatorName("|="))),
+                                             unaryOperator(
+                                                 hasUnaryOperand(declRefExpr(to(equalsBoundNode("capture")))),
+                                                 anyOf(hasOperatorName("++"),
+                                                       hasOperatorName("--"))))))));
+                                                   
+    CaptureHandler::capture_map_t captured_assignments;
+    CaptureHandler      assignment_capture_handler(&tool.getReplacements(), captured_assignments);
+    finder.addMatcher(assignment_capture_matcher, &assignment_capture_handler);
 
     if (int result = tool.run(newFrontendActionFactory(&finder).get())) {
         return result;
@@ -181,6 +204,13 @@ int main(int argc, char const **argv) {
                 std::cout << "\t" << capture.first << " of type " << capture.second << "\n";
             }
         }
+        if (captured_assignments.find(lb.first) != captured_assignments.end()) {
+            std::cout << "    and assignment lhs captures:\n";
+            for (auto capture : captured_assignments[lb.first]) {
+                std::cout << "\t" << capture.first << " of type " << capture.second << "\n";
+            }
+        }
+        
     }
 
     std::cout << "Collected replacements:\n";
