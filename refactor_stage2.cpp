@@ -97,6 +97,35 @@ AST_MATCHER_P(clang::LambdaExpr, forEachCaptureVar,
     return Matched;
 }
 
+// Clang has no matcher for simultaneously matching a caller's argument with the callee parameter
+// This one will return true, with associated matches, on the first argument/parameter pair it finds
+// that pass the supplied inner matchers
+AST_MATCHER_P2(clang::CallExpr, hasArgParameter,
+               clang::ast_matchers::internal::Matcher<clang::Expr>, ArgMatcher,
+               clang::ast_matchers::internal::Matcher<clang::ParmVarDecl>, ParamMatcher) {
+    using namespace clang::ast_matchers::internal;
+
+    auto callee = Node.getDirectCallee();
+
+    for (unsigned argno = 0;
+         (argno < Node.getNumArgs()) && (argno < callee->getNumParams());
+         ++argno) {
+        BoundNodesTreeBuilder Result(*Builder);
+
+        auto arg   = Node.getArg(argno);
+        bool ArgMatched = ArgMatcher.matches(*arg, Finder, &Result);
+
+        auto param = callee->getParamDecl(argno);
+        bool ParamMatched = ParamMatcher.matches(*param, Finder, &Result);
+
+        if (ArgMatched && ParamMatched) {
+            *Builder = std::move(Result);
+            return true;
+        }
+    }
+    return false;
+}
+
 }
 
 int main(int argc, char const **argv) {
