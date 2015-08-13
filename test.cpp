@@ -27,7 +27,8 @@ int main() {
 
     };
     expression_capture_0();
+    i = 0;
 
-    std::cout << d << "\n";
+    std::cout << d << i << "\n";
 
 }

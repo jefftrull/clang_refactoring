@@ -22,6 +22,11 @@ include_directories( ${LLVM_ROOT}/tools/clang/include
                    )
 
 add_definitions( -std=c++1y -fno-rtti )    # -fno-rtti inhibits linker error for some reason *shrugs*
+if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+  add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
+endif()
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 
 add_executable( rs2 refactor_stage2.cpp )
 
