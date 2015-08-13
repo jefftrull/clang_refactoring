@@ -175,13 +175,16 @@ int main(int argc, char const **argv) {
                                 forEachCaptureVar(decl().bind("capture")),
                                 forEachDescendant(
                                     stmt(anyOf(
+                                             // mutating binary operators
                                              binaryOperator(
+                                                 // that use one of our captures
                                                  hasLHS(declRefExpr(to(equalsBoundNode("capture")))),
                                                  anyOf(hasOperatorName("="),
                                                        hasOperatorName("+="),
                                                        hasOperatorName("-="),
                                                        hasOperatorName("&="),
                                                        hasOperatorName("|="))),
+                                             // mutating unary operators
                                              unaryOperator(
                                                  hasUnaryOperand(declRefExpr(to(equalsBoundNode("capture")))),
                                                  anyOf(hasOperatorName("++"),
