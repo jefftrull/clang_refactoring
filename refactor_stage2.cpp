@@ -70,7 +70,7 @@ clang::ast_matchers::DeclarationMatcher make_lambda_matcher(M const& child_match
     return varDecl(hasType(autoType()),
                    matchesName("expression_capture_[0-9]+"),
                    hasInitializer(
-                       constructExpr(
+                       cxxConstructExpr(
                            hasDescendant(lambdaExpr(child_matcher).bind("lambda")))),
                    decl().bind("lambdavar"));
 }
