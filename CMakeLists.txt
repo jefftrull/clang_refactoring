@@ -20,6 +20,10 @@ include_directories( ${LLVM_ROOT}/tools/clang/include
                      ${LLVM_ROOT}/include
                    )
 
+find_package( Boost 1.53 REQUIRED COMPONENTS system wave thread filesystem )
+include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+
+
 add_definitions( -std=c++1y -fno-rtti )    # -fno-rtti inhibits linker error for some reason *shrugs*
 if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
@@ -29,6 +33,9 @@ if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+
+# stage 1 via Boost.wave
+add_executable( rs1 refactor_stage1_wave_msm.cpp )
 
 add_executable( rs2 refactor_stage2.cpp )
 set_target_properties( rs2 PROPERTIES COMPILE_FLAGS "${LLVM_CXXFLAGS}" )
