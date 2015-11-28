@@ -8,7 +8,6 @@ endif()
 # get LLVM include and library deps
 execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --cxxflags 
   OUTPUT_VARIABLE LLVM_CXXFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE )
-add_definitions( ${LLVM_CXXFLAGS} )
 execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --ldflags
   OUTPUT_VARIABLE LLVM_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE )
 execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --libs
@@ -29,6 +28,8 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 
 add_executable( rs2 refactor_stage2.cpp )
+set_target_properties( rs2 PROPERTIES COMPILE_FLAGS "${LLVM_CXXFLAGS}" )
+
 
 target_link_libraries( rs2
         -Wl,--start-group
