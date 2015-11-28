@@ -23,6 +23,9 @@ include_directories( ${LLVM_ROOT}/tools/clang/include
 add_definitions( -std=c++1y -fno-rtti )    # -fno-rtti inhibits linker error for some reason *shrugs*
 if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
+  if (CMAKE_COMPILER_IS_GNUCC)
+    add_definitions(-Wno-error=strict-aliasing) # this one is triggered by Clang AST
+  endif()
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
