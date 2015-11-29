@@ -6,6 +6,8 @@
 #include <boost/msm/back/state_machine.hpp>
 // for the Not_ operator
 #include <boost/msm/front/euml/operator.hpp>
+// for the ActionSequence_ operator
+#include <boost/msm/front/functor_row.hpp>
 
 // Boost Wave preprocessor library
 #include <boost/wave.hpp>
@@ -16,6 +18,7 @@
 
 using namespace boost;
 using boost::msm::front::euml::Not_;
+using boost::msm::front::ActionSequence_;
 using boost::msm::front::Row;
 
 // events - currently expecting these to be external (Wave tokens?)
@@ -82,6 +85,25 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
         }
     };
 
+    struct begin_lambda {
+        template<class Source, class Target, class Event>
+        void operator()(Event const&, pp_state const&, Source const&, Target const&) {
+            // output start of lambda
+            std::cout << "BEGIN LAMBDA\n";
+        }
+    };
+
+    struct end_lambda {
+        template<class Source, class Target, class Event>
+        void operator()(Event const&, pp_state const&, Source const&, Target const&) {
+            // output start of lambda
+            std::cout << "END LAMBDA\n";
+        }
+    };
+
+    // define composite actions
+    typedef ActionSequence_<mpl::vector<push_stack, begin_lambda> > enter_target;
+    typedef ActionSequence_<mpl::vector<pop_stack,  end_lambda> >   leave_target;
     // guards
     struct first_level {
         template<class Event, class Source, class Target>
@@ -97,18 +119,18 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
     // This table assumes we transition into "inactive" on tok_endif from stack depth 1
     typedef boost::msm::front::none none;
     struct transition_table : mpl::vector<
-        //    State           Event      Next            Action      Guard
-        Row < inactive,       condtrue,  condtrue_code,  push_stack, none              >,
-        Row < condtrue_code,  tok_if,    condtrue_code,  push_stack, none              >,
-        Row < condtrue_code,  tok_endif, inactive,       pop_stack,  first_level       >,
-        Row < condtrue_code,  tok_endif, condtrue_code,  pop_stack,  Not_<first_level> >,
-        Row < condtrue_code,  tok_else,  condfalse_code, none,       first_level       >,
+        //    State           Event      Next            Action        Guard
+        Row < inactive,       condtrue,  condtrue_code,  enter_target, none              >,
+        Row < condtrue_code,  tok_if,    condtrue_code,  push_stack,   none              >,
+        Row < condtrue_code,  tok_endif, inactive,       leave_target, first_level       >,
+        Row < condtrue_code,  tok_endif, condtrue_code,  pop_stack,    Not_<first_level> >,
+        Row < condtrue_code,  tok_else,  condfalse_code, end_lambda,   first_level       >,
 
-        Row < inactive,       condfalse, condfalse_code, push_stack, none              >,
-        Row < condfalse_code, tok_if,    condfalse_code, push_stack, none              >,
-        Row < condfalse_code, tok_endif, inactive,       pop_stack,  first_level       >,
-        Row < condfalse_code, tok_endif, condfalse_code, pop_stack,  Not_<first_level> >,
-        Row < condfalse_code, tok_else,  condtrue_code,  none,       first_level       >
+        Row < inactive,       condfalse, condfalse_code, push_stack,   none              >,
+        Row < condfalse_code, tok_if,    condfalse_code, push_stack,   none              >,
+        Row < condfalse_code, tok_endif, inactive,       pop_stack,    first_level       >,
+        Row < condfalse_code, tok_endif, condfalse_code, pop_stack,    Not_<first_level> >,
+        Row < condfalse_code, tok_else,  condtrue_code,  begin_lambda, first_level       >
 
         > {};
         
@@ -147,6 +169,11 @@ struct pp_hooks : wave::context_policies::default_preprocessing_hooks {
                 // enter "false" hunk handling
                 m_fsm.process_event(condfalse());
             }
+        } else if ((token_id(directive) == T_PP_IFDEF) ||
+                   (token_id(directive) == T_PP_IFNDEF) ||
+                   (token_id(directive) == T_PP_IF)) {
+            // enter some nested ifdef/if/ifndef
+            m_fsm.process_event(tok_if());
         }
 
         return false;  // means "do not re-evaluate expression"
@@ -213,52 +240,52 @@ int main() {
     // PP events that are "not for us"
     std::cout << "Ignored PP code:\n";
     try_out_pp( "#ifdef SOME_UNKNOWN_MACRO\n"
-                "some code here\n"
+                "some code here we do NOT want\n"
                 "#else\n"
-                "some other code here\n"
+                "code here we DO want\n"
                 "#endif  // SOME_UNKNOWN_MACRO\n"
         );
 
     // PP event for us
     std::cout << "\nsimple matching PP code:\n";
     try_out_pp( "#ifdef TEST_PP_CONDITIONAL\n"
-                "some code here\n"
+                "some code here we DO want\n"
                 "#endif\n"
         );
 
     // PP event for us, two branches (true/false)
     std::cout << "\nmatching PP if/else/endif:\n";
     try_out_pp( "#ifdef TEST_PP_CONDITIONAL\n"
-                "some code here\n"
+                "some code here we want\n"
                 "#else\n"
-                "some other code here\n"
+                "some other code here we do NOT want\n"
                 "#endif  // TEST_PP_CONDITIONAL\n"
         );
 
     // PP event for us, two branches (false/true)
     std::cout << "\nmatching PP if/else/endif, condition false:\n";
     try_out_pp( "#ifndef TEST_PP_CONDITIONAL\n"
-                "some code here\n"
+                "some code here that we do NOT want\n"
                 "#else\n"
-                "some other code here\n"
+                "some other code here, that we DO want\n"
                 "#endif  // TEST_PP_CONDITIONAL\n"
         );
 
     // two branches with embedded if/then/else
     std::cout << "\nmatching PP if/else/endif with nested ifdefs:\n";
     try_out_pp( "#ifdef TEST_PP_CONDITIONAL\n"
-                "code we want here\n"
+                "code we DO want here\n"
                 "#ifdef UNDEFINED_MACRO\n"
                 "#endif  // UNDEFINED_MACRO\n"
-                "some other code we want\n"
+                "some other code we DO want\n"
                 "#else\n"
                 "code we do NOT want\n"
                 "#ifdef OTHER_UNDEFINED_MACRO\n"
-                "other code we do not want\n"
+                "other code we do NOT want\n"
                 "#else\n"
-                "yet more code we do not want\n"
+                "yet more code we do NOT want\n"
                 "#endif  // OTHER_UNDEFINED_MACRO\n"
-                "still more code we do not want\n"
+                "still more code we do NOT want\n"
                 "#endif  // TEST_PP_CONDITIONAL\n"
         );
 
