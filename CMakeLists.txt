@@ -36,6 +36,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 
 # stage 1 via Boost.wave
 add_executable( rs1 refactor_stage1_wave_msm.cpp )
+target_link_libraries( rs1 ${Boost_LIBRARIES} )
 
 add_executable( rs2 refactor_stage2.cpp )
 set_target_properties( rs2 PROPERTIES COMPILE_FLAGS "${LLVM_CXXFLAGS}" )
