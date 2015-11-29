@@ -56,6 +56,7 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
         }
     };
 
+    // inside the body of a target hunk whose condition was false
     struct condfalse_code : msm::front::state<> {
         template< class Event, class FSM >
         void on_entry(Event const&, FSM&) {
@@ -64,6 +65,18 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
         template< class Event, class FSM >
         void on_exit(Event const&, FSM&) {
             std::cout << "exited condition false state\n";
+        }
+    };
+
+    // inside the ELSE clause of a target hunk whose condition was true
+    struct condtrue_else : msm::front::state<> {
+        template< class Event, class FSM >
+        void on_entry(Event const&, FSM&) {
+            std::cout << "entered condition true else clause state\n";
+        }
+        template< class Event, class FSM >
+        void on_exit(Event const&, FSM&) {
+            std::cout << "exited condition true else clause state\n";
         }
     };
 
@@ -104,6 +117,8 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
     // define composite actions
     typedef ActionSequence_<mpl::vector<push_stack, begin_lambda> > enter_target;
     typedef ActionSequence_<mpl::vector<pop_stack,  end_lambda> >   leave_target;
+    typedef ActionSequence_<mpl::vector<pop_stack, begin_lambda, end_lambda> > empty_target;
+
     // guards
     struct first_level {
         template<class Event, class Source, class Target>
@@ -122,15 +137,19 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
         //    State           Event      Next            Action        Guard
         Row < inactive,       condtrue,  condtrue_code,  enter_target, none              >,
         Row < condtrue_code,  tok_if,    condtrue_code,  push_stack,   none              >,
-        Row < condtrue_code,  tok_endif, inactive,       leave_target, first_level       >,
         Row < condtrue_code,  tok_endif, condtrue_code,  pop_stack,    Not_<first_level> >,
-        Row < condtrue_code,  tok_else,  condfalse_code, end_lambda,   first_level       >,
+        Row < condtrue_code,  tok_endif, inactive,       leave_target, first_level       >,
+        Row < condtrue_code,  tok_else,  condtrue_else,  end_lambda,   first_level       >,
 
         Row < inactive,       condfalse, condfalse_code, push_stack,   none              >,
         Row < condfalse_code, tok_if,    condfalse_code, push_stack,   none              >,
-        Row < condfalse_code, tok_endif, inactive,       pop_stack,    first_level       >,
+        Row < condfalse_code, tok_endif, inactive,       empty_target, first_level       >,
         Row < condfalse_code, tok_endif, condfalse_code, pop_stack,    Not_<first_level> >,
-        Row < condfalse_code, tok_else,  condtrue_code,  begin_lambda, first_level       >
+        Row < condfalse_code, tok_else,  condtrue_code,  begin_lambda, first_level       >,
+
+        Row < condtrue_else, tok_if,    condtrue_else,   push_stack,   none              >,
+        Row < condtrue_else, tok_endif, inactive,        pop_stack,    first_level       >,
+        Row < condtrue_else, tok_endif, condtrue_else,   pop_stack,    Not_<first_level> >
 
         > {};
         
@@ -287,6 +306,20 @@ int main() {
                 "#endif  // OTHER_UNDEFINED_MACRO\n"
                 "still more code we do NOT want\n"
                 "#endif  // TEST_PP_CONDITIONAL\n"
+        );
+
+    std::cout << "\nifndef where we want an empty lambda:\n";
+    try_out_pp( "#ifndef TEST_PP_CONDITIONAL\n"
+                "code we do NOT want\n"
+                "#endif\n"
+                "^there should be an empty lambda above me^\n"
+        );
+
+    std::cout << "\nifdef unrelated to us, should be no lambda anywhere\n";
+    try_out_pp( "#ifdef UNDEFINED_MACRO\n"
+                "code we do NOT want\n"
+                "#endif\n"
+                "^there should be NO lambda above me^\n"
         );
 
 }
