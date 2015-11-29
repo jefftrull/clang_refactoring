@@ -103,22 +103,26 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
         Row < condtrue_code,  tok_endif, inactive,       leave_target, first_level       >,
         Row < condtrue_code,  tok_else,  condtrue_else,  end_lambda,   first_level       >,
 
+        // transitions for if/ifdef/ifndef of target hunk with false condition
         Row < inactive,       condfalse, condfalse_code, push_stack,   none              >,
         Row < condfalse_code, tok_if,    condfalse_code, push_stack,   none              >,
         Row < condfalse_code, tok_endif, inactive,       empty_target, first_level       >,
         Row < condfalse_code, tok_endif, condfalse_code, pop_stack,    Not_<first_level> >,
         Row < condfalse_code, tok_else,  condtrue_code,  begin_lambda, first_level       >,
 
-        Row < condtrue_else, tok_if,    condtrue_else,   push_stack,   none              >,
-        Row < condtrue_else, tok_endif, inactive,        pop_stack,    first_level       >,
-        Row < condtrue_else, tok_endif, condtrue_else,   pop_stack,    Not_<first_level> >
+        // transitions for ELSE clause of target hunk with true condition
+        Row < condtrue_else,  tok_if,    condtrue_else,  push_stack,   none              >,
+        Row < condtrue_else,  tok_endif, inactive,       pop_stack,    first_level       >,
+        Row < condtrue_else,  tok_endif, condtrue_else,  pop_stack,    Not_<first_level> >,
+        Row < condtrue_else,  tok_else,  condtrue_else,  none,         none              >,
+
+        // transitions for inactive state (discard everything except our target)
+        Row < inactive,       tok_if,    inactive,       none,         none              >,
+        Row < inactive,       tok_endif, inactive,       none,         none              >,
+        Row < inactive,       tok_else,  inactive,       none,         none              >
 
         > {};
         
-    // It's my preference that the meaning of an unexpected event is "take no action", so:
-    template<class Event>
-    void no_transition(Event const&, pp_state const&, int) {}
-
 };
 
 typedef msm::back::state_machine<pp_state> pp_fsm;
