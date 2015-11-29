@@ -33,59 +33,22 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
     pp_state() : m_stack_depth(0) {}
 
     // states
-    struct inactive : msm::front::state<> {
-        template<class Event, class FSM>
-        void on_entry(Event const&, FSM&) {
-            std::cout << "entered inactive state\n";
-        }
-        template<class Event, class FSM>
-        void on_exit(Event const&, FSM&) {
-            std::cout << "exited inactive state\n";
-        }
-    };
+    struct inactive : msm::front::state<> {};
     typedef inactive initial_state;
 
-    struct condtrue_code : msm::front::state<> {
-        template< class Event, class FSM >
-        void on_entry(Event const&, FSM&) {
-            std::cout << "entered condition true state\n";
-        }
-        template< class Event, class FSM >
-        void on_exit(Event const&, FSM&) {
-            std::cout << "exited condition true state\n";
-        }
-    };
+    struct condtrue_code : msm::front::state<> {};
 
     // inside the body of a target hunk whose condition was false
-    struct condfalse_code : msm::front::state<> {
-        template< class Event, class FSM >
-        void on_entry(Event const&, FSM&) {
-            std::cout << "entered condition false state\n";
-        }
-        template< class Event, class FSM >
-        void on_exit(Event const&, FSM&) {
-            std::cout << "exited condition false state\n";
-        }
-    };
+    struct condfalse_code : msm::front::state<> {};
 
     // inside the ELSE clause of a target hunk whose condition was true
-    struct condtrue_else : msm::front::state<> {
-        template< class Event, class FSM >
-        void on_entry(Event const&, FSM&) {
-            std::cout << "entered condition true else clause state\n";
-        }
-        template< class Event, class FSM >
-        void on_exit(Event const&, FSM&) {
-            std::cout << "exited condition true else clause state\n";
-        }
-    };
+    struct condtrue_else : msm::front::state<> {};
 
     // actions
     // can make the incr/decr a simple lambda?
     struct push_stack {
         template<class Event, class Source, class Target>
         void operator()(Event const&, pp_state& fsm, Source const&, Target const&) {
-            std::cout << "incrementing depth\n";
             fsm.m_stack_depth++;
         }
     };
@@ -93,7 +56,6 @@ struct pp_state : msm::front::state_machine_def<pp_state> {
     struct pop_stack {
         template<class Source, class Target>
         void operator()(tok_endif const&, pp_state& fsm, Source const&, Target const&) {
-            std::cout << "decrementing depth\n";
             fsm.m_stack_depth--;
         }
     };
