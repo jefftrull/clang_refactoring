@@ -35,8 +35,37 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 
 # stage 1 via Boost.wave
+
+# Stage 1 needs to know what include paths to use.  We will use those of the build compile
+# by asking it what it uses, and creating a cpp file containing them:
+execute_process( COMMAND ${CMAKE_CXX_COMPILER} -E -x c++ - -v
+  INPUT_FILE /dev/null
+  ERROR_VARIABLE CXXERR
+  OUTPUT_QUIET
+  ERROR_STRIP_TRAILING_WHITESPACE
+  )
+
+# remove initial spaces in path list
+string( REPLACE "\n " "\n" CXXLIST "${CXXERR}" )
+# turn embedded newlines into semicolons, and thus into a CMake list
+string( REPLACE "\n" ";" CXXLIST "${CXXLIST}" )
+
+# treating the output like a string, find the start and end of the include paths
+set( INCLSTARTSTR "\#include <...> search starts here:;" )   # preamble
+string( LENGTH "${INCLSTARTSTR}" INCLSTARTLEN )
+string( FIND "${CXXLIST}" ${INCLSTARTSTR} INCLSTART )        # locate preamble
+math( EXPR INCLSTART ${INCLSTART}+${INCLSTARTLEN})           # move past it
+string( FIND "${CXXLIST}" "End of search list." INCLEND )    # find postscript
+math( EXPR INCLLEN ${INCLEND}-${INCLSTART}-1 )               # truncate final semicolon
+string( SUBSTRING "${CXXLIST}" ${INCLSTART} ${INCLLEN} INCLPATHLIST )
+
+# use "generator expressions" to join the paths as an initializer list
+file( GENERATE OUTPUT default_include_paths.cpp
+  CONTENT "\#include <vector>\n\#include <string>\nstd::vector<std::string>\nipaths={\n\"$<JOIN:${INCLPATHLIST},\",\n\">\"\n};\n" )
+add_library( compiler_info default_include_paths.cpp )
+
 add_executable( rs1 refactor_stage1_wave_msm.cpp )
-target_link_libraries( rs1 ${Boost_LIBRARIES} )
+target_link_libraries( rs1 ${Boost_LIBRARIES} compiler_info )
 
 add_executable( rs2 refactor_stage2.cpp )
 set_target_properties( rs2 PROPERTIES COMPILE_FLAGS "${LLVM_CXXFLAGS}" )
