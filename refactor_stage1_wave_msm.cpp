@@ -202,6 +202,7 @@ typedef boost::wave::context<std::string::const_iterator, lex_iterator_type,
         > context_type;
 
 extern std::vector<std::string> ipaths;   // compiler-supplied include paths
+extern std::vector<std::string> predefs;  // compiler-supplied predefined macros
 
 void try_out_pp(std::string const& corpus) {
     pp_hooks hooks("TEST_PP_CONDITIONAL");
@@ -211,11 +212,17 @@ void try_out_pp(std::string const& corpus) {
     // before we parse, set up a few things:
     // retain comments
     ctx_defined.set_language(boost::wave::enable_preserve_comments(ctx_defined.get_language()));
+    // predefined macros contain long longs
+    ctx_defined.set_language(boost::wave::enable_long_long(ctx_defined.get_language()));
     // find includes
     ctx_defined.set_sysinclude_delimiter();
     // use generated data from our compiler to seed include paths:
     for (std::string const& ipath : ipaths) {
         ctx_defined.add_include_path(ipath.c_str());
+    }
+    // supply predefined macros too
+    for (std::string const& predef : predefs) {
+        ctx_defined.add_macro_definition(predef, true);
     }
     // enable test ifdef
     ctx_defined.add_macro_definition("TEST_PP_CONDITIONAL");

@@ -62,7 +62,21 @@ string( SUBSTRING "${CXXLIST}" ${INCLSTART} ${INCLLEN} INCLPATHLIST )
 # use "generator expressions" to join the paths as an initializer list
 file( GENERATE OUTPUT default_include_paths.cpp
   CONTENT "\#include <vector>\n\#include <string>\nstd::vector<std::string>\nipaths={\n\"$<JOIN:${INCLPATHLIST},\",\n\">\"\n};\n" )
-add_library( compiler_info default_include_paths.cpp )
+
+# Stage 1 also needs a list of any predefined macros the compiler uses
+execute_process( COMMAND ${CMAKE_CXX_COMPILER} -dM -E -
+  INPUT_FILE /dev/null
+  OUTPUT_VARIABLE PREDEFS
+  )
+# turn those definitions (of the form #define X Y) into X=Y form for supplying to Wave
+string( REPLACE "\#define " "" PREDEFS "${PREDEFS}" )  # remove define, leaving "X Y"
+string( REPLACE " " "=" PREDEFS "${PREDEFS}" )         # produces "X=Y"
+string( REPLACE "\"" "\\\"" PREDEFS "${PREDEFS}" )     # escapes double quotes in string macros
+string( REPLACE "\n" ";" PREDEFS "${PREDEFS}" )        # create CMake list X1=Y1;X2=Y2;...
+file( GENERATE OUTPUT predefined_macros.cpp
+  CONTENT "\#include <vector>\n\#include <string>\nstd::vector<std::string>\npredefs={\n\"$<JOIN:${PREDEFS},\",\n\">\"\n};\n" )
+
+add_library( compiler_info default_include_paths.cpp predefined_macros.cpp )
 
 add_executable( rs1 refactor_stage1_wave_msm.cpp )
 target_link_libraries( rs1 ${Boost_LIBRARIES} compiler_info )
