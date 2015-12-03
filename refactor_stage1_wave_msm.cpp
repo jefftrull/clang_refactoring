@@ -227,10 +227,16 @@ void try_out_pp(std::string const& corpus) {
     // enable test ifdef
     ctx_defined.add_macro_definition("TEST_PP_CONDITIONAL");
 
-    // iterate over the non-skipped tokens
-    // this process will execute our code:
-    for (token_type const& t : ctx_defined) {
-        std::cout << t.get_value();  // this one was not skipped and we copy it to the output
+    using boost::wave::preprocess_exception;
+    try {
+        // iterate over the non-skipped tokens
+        // this process will execute our code:
+        for (token_type const& t : ctx_defined) {
+            std::cout << t.get_value();  // this one was not skipped and we copy it to the output
+        }
+    } catch (preprocess_exception const& e) {
+        std::cerr << "parse failed on line " << e.line_no() << " of file " << e.file_name();
+        std::cerr << ": " << preprocess_exception::error_text(e.get_errorcode()) << "\n";
     }
 }
 
