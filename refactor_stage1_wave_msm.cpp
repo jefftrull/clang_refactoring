@@ -212,8 +212,9 @@ void try_out_pp(std::string const& corpus) {
     // before we parse, set up a few things:
     // retain comments
     ctx_defined.set_language(boost::wave::enable_preserve_comments(ctx_defined.get_language()));
-    // predefined macros contain long longs
+    // predefined macros contain long longs and variadics
     ctx_defined.set_language(boost::wave::enable_long_long(ctx_defined.get_language()));
+    ctx_defined.set_language(boost::wave::enable_variadics(ctx_defined.get_language()));
     // find includes
     ctx_defined.set_sysinclude_delimiter();
     // use generated data from our compiler to seed include paths:
