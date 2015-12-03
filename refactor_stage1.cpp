@@ -1,3 +1,12 @@
+/**
+ *   Copyright (C) 2015 Jeff Trull <edaskel@att.net>
+ *
+ *   Distributed under the Boost Software License, Version 1.0. (See accompanying
+ *   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ *
+ *
+ */
+
 #include <iostream>
 
 // Boost Meta State Machine library (for tracking preprocessor "stack")
@@ -310,4 +319,24 @@ int main() {
                 "^there should be NO lambda above me^\n"
         );
 
+    std::cout << "\ncomplex example:\n";
+    try_out_pp( "#include <iostream>\n" \
+                "int testfn() {\n"                                       \
+                     "    int i = 0;   // define some variables to use\n"     \
+                     "    bool b = false;\n"                                  \
+                     "    double d = 0.0;\n"                                  \
+                     "    std::string s;\n"                                   \
+                     "#ifdef TEST_PP_CONDITIONAL\n"                           \
+                     "#ifdef BOGUS_MACRO\n"                                   \
+                     "#endif // BOGUS_MACRO\n"                                \
+                     "    std::cout << s << std::endl;\n"                     \
+                     "    d = 1.0;     // for condition true\n"               \
+                     "#else\n"                                                \
+                     "#ifndef BOGUS_MACRO\n"                                  \
+                     "    std::cout << s << std::endl;\n"                     \
+                     "#endif // BOGUS_MACRO\n"                                \
+                     "    b = true;    // for condition false\n"              \
+                     "#endif // TEST_PP_CONDITIONAL\n"                        \
+                     "    return i;  // used - but only outside the ifdefs\n" \
+                "}\n" ) ;
 }

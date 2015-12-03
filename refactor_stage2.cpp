@@ -1,3 +1,12 @@
+/**
+ *   Copyright (C) 2015 Jeff Trull <edaskel@att.net>
+ *
+ *   Distributed under the Boost Software License, Version 1.0. (See accompanying
+ *   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ *
+ *
+ */
+
 // Performing the second refactoring stage of my example: finding our special lambda
 // expressions and analyzing how they use variables from outer scopes
 

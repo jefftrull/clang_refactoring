@@ -1,6 +1,16 @@
+#
+#    Copyright (C) 2015 Jeff Trull <edaskel@att.net>
+# 
+#    Distributed under the Boost Software License, Version 1.0. (See accompanying
+#    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+# 
+# 
+#
+
 cmake_minimum_required( VERSION 2.8.12 )
 
 # we expect LLVM_ROOT to be defined
+set( LLVM_ROOT "" CACHE PATH "path to the LLVM build containing the AST tools" )
 if( NOT LLVM_ROOT )
   message( FATAL_ERROR "please set LLVM_ROOT to the root of your LLVM build" )
 endif()
@@ -85,7 +95,7 @@ add_executable( rs2 refactor_stage2.cpp )
 set_target_properties( rs2 PROPERTIES COMPILE_FLAGS "${LLVM_CXXFLAGS}" )
 
 
-target_link_libraries( rs2
+set( CLANG_AST_LIBS
         -Wl,--start-group
 	clangAST
 	clangAnalysis
@@ -111,6 +121,10 @@ target_link_libraries( rs2
         ${LLVM_LIBS}
         ${LLVM_SYSLIBS}
 )
+
+target_link_libraries( rs2 ${CLANG_AST_LIBS} )
+
+
 set_target_properties( rs2 PROPERTIES
                        LINK_FLAGS "${LLVM_LDFLAGS}" )
 
