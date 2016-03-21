@@ -22,8 +22,10 @@ execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --ldflags
   OUTPUT_VARIABLE LLVM_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE )
 execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --libs
   OUTPUT_VARIABLE LLVM_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE )
+string( REPLACE " " ";" LLVM_LIBS "${LLVM_LIBS}" )
 execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --system-libs
   OUTPUT_VARIABLE LLVM_SYSLIBS OUTPUT_STRIP_TRAILING_WHITESPACE )
+string( REPLACE " " ";" LLVM_SYSLIBS "${LLVM_SYSLIBS}" )
 
 include_directories( ${LLVM_ROOT}/tools/clang/include
                      ${LLVM_ROOT}/build/tools/clang/include
