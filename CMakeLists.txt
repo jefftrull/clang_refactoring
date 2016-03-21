@@ -90,7 +90,7 @@ file( GENERATE OUTPUT predefined_macros.cpp
 
 add_library( compiler_info default_include_paths.cpp predefined_macros.cpp )
 
-add_executable( rs1 refactor_stage1_wave_msm.cpp )
+add_executable( rs1 refactor_stage1.cpp )
 target_link_libraries( rs1 ${Boost_LIBRARIES} compiler_info )
 
 add_executable( rs2 refactor_stage2.cpp )
