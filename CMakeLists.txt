@@ -27,7 +27,8 @@ execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --system-libs
   OUTPUT_VARIABLE LLVM_SYSLIBS OUTPUT_STRIP_TRAILING_WHITESPACE )
 string( REPLACE " " ";" LLVM_SYSLIBS "${LLVM_SYSLIBS}" )
 
-include_directories( ${LLVM_ROOT}/tools/clang/include
+include_directories( SYSTEM
+                     ${LLVM_ROOT}/tools/clang/include
                      ${LLVM_ROOT}/build/tools/clang/include
                      ${LLVM_ROOT}/include
                    )
