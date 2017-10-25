@@ -34,7 +34,6 @@ include_directories( SYSTEM
                    )
 
 find_package( Boost 1.53 REQUIRED COMPONENTS system wave thread filesystem )
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 
 add_definitions( -std=c++1y -fno-rtti )    # -fno-rtti inhibits linker error for some reason *shrugs*
@@ -92,7 +91,7 @@ file( GENERATE OUTPUT predefined_macros.cpp
 add_library( compiler_info default_include_paths.cpp predefined_macros.cpp )
 
 add_executable( rs1 refactor_stage1.cpp )
-target_link_libraries( rs1 ${Boost_LIBRARIES} compiler_info )
+target_link_libraries( rs1 Boost::system Boost::filesystem Boost::wave compiler_info )
 
 add_executable( rs2 refactor_stage2.cpp )
 set_target_properties( rs2 PROPERTIES COMPILE_FLAGS "${LLVM_CXXFLAGS}" )
