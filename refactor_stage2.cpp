@@ -11,7 +11,7 @@
 // expressions and analyzing how they use variables from outer scopes
 
 // sample command line:
-// ./rs2 -p=. -extra-arg='-I/usr/lib/gcc/x86_64-linux-gnu/4.9/include' -extra-arg='-std=c++11' ../test.cpp --
+// ./rs2 -p=. -extra-arg='-I/usr/lib/gcc/x86_64-linux-gnu/8/include' -extra-arg='-std=c++11' ../test.cpp --
 
 #include <iostream>
 #include <map>
@@ -83,8 +83,8 @@ clang::ast_matchers::DeclarationMatcher make_lambda_matcher(M const& child_match
     return varDecl(hasType(autoType()),
                    matchesName("expression_capture_[0-9]+"),
                    hasInitializer(
-                       cxxConstructExpr(
-                           hasDescendant(lambdaExpr(child_matcher).bind("lambda")))),
+                       hasDescendant(cxxConstructExpr(
+                                         hasDescendant(lambdaExpr(child_matcher).bind("lambda"))))),
                    decl().bind("lambdavar"));
 }
 
