@@ -7,7 +7,7 @@
 # 
 #
 
-cmake_minimum_required( VERSION 2.8.12 )
+cmake_minimum_required( VERSION 3.12 )
 
 # we expect LLVM_ROOT to be defined
 set( LLVM_ROOT "" CACHE PATH "path to the LLVM build containing the AST tools" )
@@ -88,7 +88,7 @@ string( REPLACE "\n" ";" PREDEFS "${PREDEFS}" )        # create CMake list X1=Y1
 file( GENERATE OUTPUT predefined_macros.cpp
   CONTENT "\#include <vector>\n\#include <string>\nstd::vector<std::string>\npredefs={\n\"$<JOIN:${PREDEFS},\",\n\">\"\n};\n" )
 
-add_library( compiler_info default_include_paths.cpp predefined_macros.cpp )
+add_library( compiler_info ${CMAKE_BINARY_DIR}/default_include_paths.cpp ${CMAKE_BINARY_DIR}/predefined_macros.cpp )
 
 add_executable( rs1 refactor_stage1.cpp )
 target_link_libraries( rs1 Boost::system Boost::filesystem Boost::wave compiler_info )
