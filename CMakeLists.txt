@@ -9,6 +9,8 @@
 
 cmake_minimum_required( VERSION 3.12 )
 
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
+
 # we expect LLVM_ROOT to be defined
 set( LLVM_ROOT "" CACHE PATH "path to the LLVM build containing the AST tools" )
 if( NOT LLVM_ROOT )
