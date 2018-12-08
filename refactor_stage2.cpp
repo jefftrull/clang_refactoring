@@ -14,6 +14,8 @@
 // ./rs2 -p=. -extra-arg='-I/usr/lib/gcc/x86_64-linux-gnu/4.9/include' -extra-arg='-std=c++11' ../test.cpp --
 
 #include <iostream>
+#include <map>
+#include <string>
 
 #include "clang/AST/AST.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
@@ -28,8 +30,9 @@
 static llvm::cl::OptionCategory ToolingSampleCategory("Lambda extractor");
 
 class LambdaHandler : public clang::ast_matchers::MatchFinder::MatchCallback {
+    using replacement_map = std::map<std::string, clang::tooling::Replacements>;
 public:
-    LambdaHandler(clang::tooling::Replacements * replace) : replace_(replace) {}
+    LambdaHandler(replacement_map const * replace) : replace_(replace) {}
 
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
         using namespace clang;
@@ -37,8 +40,8 @@ public:
             VarDecl    const * lambda_var = result.Nodes.getNodeAs<VarDecl>("lambdavar");
             // display lambda contents
             auto body      = lambda->getBody();
-            auto bodyStart = body->getLocStart().getLocWithOffset(1);   // skip left brace
-            auto bodyEnd   = body->getLocEnd().getLocWithOffset(-1);    // drop right brace
+            auto bodyStart = body->getBeginLoc().getLocWithOffset(1);   // skip left brace
+            auto bodyEnd   = body->getEndLoc().getLocWithOffset(-1);    // drop right brace
             auto bodyRange = CharSourceRange::getTokenRange(bodyStart, bodyEnd);
             lambda_bodies[lambda_var->getQualifiedNameAsString()] =
                 Lexer::getSourceText(bodyRange,
@@ -48,14 +51,15 @@ public:
     }
     std::map<std::string, std::string> lambda_bodies;
 private:
-    clang::tooling::Replacements * replace_;
+    replacement_map const * replace_;
 };
 
 class CaptureHandler : public clang::ast_matchers::MatchFinder::MatchCallback {
+    using replacement_map = std::map<std::string, clang::tooling::Replacements>;
 public:
     typedef std::map<std::string,
                      std::vector<std::pair<std::string, std::string> > > capture_map_t;
-    CaptureHandler(clang::tooling::Replacements * replace,
+    CaptureHandler(replacement_map const * replace,
                    capture_map_t & captured_vars) : replace_(replace), captured_vars_(captured_vars) {}
 
     virtual void run(clang::ast_matchers::MatchFinder::MatchResult const& result) override {
@@ -67,7 +71,7 @@ public:
         }
     }
 private:
-    clang::tooling::Replacements * replace_;
+    replacement_map const * replace_;
     capture_map_t & captured_vars_;
 };
 
@@ -226,8 +230,11 @@ int main(int argc, char const **argv) {
     }
 
     std::cout << "Collected replacements:\n";
-    for (auto const & r : tool.getReplacements()) {
-        std::cout << r.toString() << "\n";
+    for (auto const & rs : tool.getReplacements()) {
+        std::cout << "in file " << rs.first << ":\n";
+        for (auto const & r : rs.second) {
+            std::cout << r.toString() << "\n";
+        }
     }
 
     return 0;

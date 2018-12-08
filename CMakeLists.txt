@@ -104,6 +104,7 @@ set( CLANG_AST_LIBS
 	clangBasic
 	clangDriver
 	clangEdit
+        clangFormat
 	clangFrontend
 	clangFrontendTool
 	clangLex
@@ -119,6 +120,7 @@ set( CLANG_AST_LIBS
 	clangSerialization
 	clangToolingCore
 	clangTooling
+	clangToolingInclusions
         -Wl,--end-group
         ${LLVM_LIBS}
         ${LLVM_SYSLIBS}
