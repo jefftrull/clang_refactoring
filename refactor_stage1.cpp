@@ -11,7 +11,6 @@
 
 // Boost Meta State Machine library (for tracking preprocessor "stack")
 #include <boost/msm/front/state_machine_def.hpp>
-#include <boost/msm/front/functor_row.hpp>
 #include <boost/msm/back/state_machine.hpp>
 // for the Not_ operator
 #include <boost/msm/front/euml/operator.hpp>
