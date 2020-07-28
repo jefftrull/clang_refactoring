@@ -87,27 +87,8 @@ set_target_properties( rs2 PROPERTIES COMPILE_FLAGS "${LLVM_CXXFLAGS}" )
 set( CLANG_AST_LIBS
         -Wl,--start-group
 	clangAST
-	clangAnalysis
-	clangBasic
-	clangDriver
-	clangEdit
-        clangFormat
-	clangFrontend
-	clangFrontendTool
-	clangLex
-	clangParse
-	clangSema
-	clangEdit
 	clangASTMatchers
-	clangRewrite
-	clangRewriteFrontend
-	clangStaticAnalyzerFrontend
-	clangStaticAnalyzerCheckers
-	clangStaticAnalyzerCore
-	clangSerialization
-	clangToolingCore
 	clangTooling
-	clangToolingInclusions
         -Wl,--end-group
         ${LLVM_LIBS}
         ${LLVM_SYSLIBS}
