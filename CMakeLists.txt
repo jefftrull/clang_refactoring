@@ -9,36 +9,21 @@
 
 cmake_minimum_required( VERSION 3.12 )
 
+project( clang_refactoring )
+
+set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
-# we expect LLVM_ROOT to be defined
-set( LLVM_ROOT "" CACHE PATH "path to the LLVM build containing the AST tools" )
-if( NOT LLVM_ROOT )
-  message( FATAL_ERROR "please set LLVM_ROOT to the root of your LLVM build" )
-endif()
+# We will pick up LLVM via the somewhat more modern "Config" route
+# so set CMAKE_PREFIX_PATH accordingly
 
-# get LLVM include and library deps
-execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --cxxflags 
-  OUTPUT_VARIABLE LLVM_CXXFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE )
-execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --ldflags
-  OUTPUT_VARIABLE LLVM_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE )
-execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --libs
-  OUTPUT_VARIABLE LLVM_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE )
-string( REPLACE " " ";" LLVM_LIBS "${LLVM_LIBS}" )
-execute_process( COMMAND ${LLVM_ROOT}/build/bin/llvm-config --system-libs
-  OUTPUT_VARIABLE LLVM_SYSLIBS OUTPUT_STRIP_TRAILING_WHITESPACE )
-string( REPLACE " " ";" LLVM_SYSLIBS "${LLVM_SYSLIBS}" )
-
-include_directories( SYSTEM
-                     ${LLVM_ROOT}/tools/clang/include
-                     ${LLVM_ROOT}/build/tools/clang/include
-                     ${LLVM_ROOT}/include
-                   )
+find_package( Clang )
 
 find_package( Boost 1.53 REQUIRED COMPONENTS system wave thread filesystem )
 
+include_directories( SYSTEM ${CLANG_INCLUDE_DIRS} ${LLVM_INCLUDE_DIRS} )
 
-add_definitions( -std=c++1y -fno-rtti )    # -fno-rtti inhibits linker error for some reason *shrugs*
+add_definitions( -fno-rtti )    # -fno-rtti inhibits linker error for some reason *shrugs*
 if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
   if (CMAKE_COMPILER_IS_GNUCC)
@@ -74,7 +59,7 @@ math( EXPR INCLLEN ${INCLEND}-${INCLSTART}-1 )               # truncate final se
 string( SUBSTRING "${CXXLIST}" ${INCLSTART} ${INCLLEN} INCLPATHLIST )
 
 # use "generator expressions" to join the paths as an initializer list
-file( GENERATE OUTPUT default_include_paths.cpp
+file( GENERATE OUTPUT ${CMAKE_BINARY_DIR}/default_include_paths.cpp
   CONTENT "\#include <vector>\n\#include <string>\nstd::vector<std::string>\nipaths={\n\"$<JOIN:${INCLPATHLIST},\",\n\">\"\n};\n" )
 
 # Stage 1 also needs a list of any predefined macros the compiler uses
@@ -87,7 +72,7 @@ string( REPLACE "\#define " "" PREDEFS "${PREDEFS}" )  # remove define, leaving 
 string( REPLACE " " "=" PREDEFS "${PREDEFS}" )         # produces "X=Y"
 string( REPLACE "\"" "\\\"" PREDEFS "${PREDEFS}" )     # escapes double quotes in string macros
 string( REPLACE "\n" ";" PREDEFS "${PREDEFS}" )        # create CMake list X1=Y1;X2=Y2;...
-file( GENERATE OUTPUT predefined_macros.cpp
+file( GENERATE OUTPUT ${CMAKE_BINARY_DIR}/predefined_macros.cpp
   CONTENT "\#include <vector>\n\#include <string>\nstd::vector<std::string>\npredefs={\n\"$<JOIN:${PREDEFS},\",\n\">\"\n};\n" )
 
 add_library( compiler_info ${CMAKE_BINARY_DIR}/default_include_paths.cpp ${CMAKE_BINARY_DIR}/predefined_macros.cpp )
@@ -130,9 +115,6 @@ set( CLANG_AST_LIBS
 
 target_link_libraries( rs2 ${CLANG_AST_LIBS} )
 
-
-set_target_properties( rs2 PROPERTIES
-                       LINK_FLAGS "${LLVM_LDFLAGS}" )
 
 # test code
 add_executable( t test.cpp )
