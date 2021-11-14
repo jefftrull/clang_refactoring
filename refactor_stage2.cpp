@@ -147,8 +147,8 @@ int main(int argc, char const **argv) {
     using namespace clang::tooling;
     using namespace clang::ast_matchers;
 
-    CommonOptionsParser opt(argc, argv, ToolingSampleCategory);
-    RefactoringTool     tool(opt.getCompilations(), opt.getSourcePathList());
+    auto opt = CommonOptionsParser::create(argc, argv, ToolingSampleCategory);
+    RefactoringTool     tool(opt->getCompilations(), opt->getSourcePathList());
 
     MatchFinder  finder;
 
